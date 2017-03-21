@@ -1,3 +1,7 @@
+#hbook
+*.hb
+*.kumac
+
 # Compiled Object files
 *.slo
 *.lo
