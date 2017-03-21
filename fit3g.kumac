@@ -1,0 +1,6 @@
+#h/fil 1 csp.hbook
+vec/crea par(9)
+vec/inp par 17000 110 20 17000 180 40 17000 240 20
+opt fit
+opt stat
+h/fit 1 g+g+g ! 9 par

@@ -1,0 +1,38 @@
+#ifndef CSPDetectorConstruction_H
+#define CSPDetectorConstruction_H 1
+
+class G4LogicalVolume;
+class G4VPhysicalVolume;
+
+#include "G4VUserDetectorConstruction.hh"
+
+class CSPDetectorConstruction : public G4VUserDetectorConstruction
+{
+  public:
+
+    CSPDetectorConstruction();
+    ~CSPDetectorConstruction();
+
+    G4VPhysicalVolume* Construct();
+
+  private:
+    
+    // Logical volumes
+    //
+    G4LogicalVolume* experimentalHall_log;
+    G4LogicalVolume* receiver_log;
+    G4LogicalVolume* vacuum_log;
+    G4LogicalVolume* envelope_log;
+    G4LogicalVolume* trough_log;
+
+    // Physical volumes
+    //
+    G4VPhysicalVolume* experimentalHall_phys;
+    G4VPhysicalVolume* receiver_phys;
+    G4VPhysicalVolume* vacuum_phys;
+    G4VPhysicalVolume* envelope_phys;
+    G4VPhysicalVolume* trough_phys;
+};
+
+#endif
+

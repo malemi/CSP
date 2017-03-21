@@ -1,0 +1,211 @@
+#include "CSPDetectorConstruction.hh"
+#include <fstream>
+#include <G4ios.hh>
+
+#include <G4Material.hh>
+#include <G4Box.hh>
+#include <G4Tubs.hh>
+#include <G4Paraboloid.hh>
+#include <G4Sphere.hh>
+#include <G4OpticalSurface.hh>
+#include <G4LogicalBorderSurface.hh>
+#include <G4LogicalSkinSurface.hh>
+#include <G4MaterialPropertiesTable.hh>
+#include <G4SubtractionSolid.hh>
+#include <G4VisAttributes.hh>
+
+#include <G4LogicalVolume.hh>
+#include <G4ThreeVector.hh>
+#include <G4PVPlacement.hh>
+#include <globals.hh>
+#include <G4SDManager.hh>
+#include <math.h>
+
+#include "ReceiverSD.hh"
+
+CSPDetectorConstruction::CSPDetectorConstruction()
+ :  experimentalHall_log(0), envelope_log(0), vacuum_log(0),
+    receiver_log(0),
+    trough_log(0),
+    experimentalHall_phys(0), receiver_phys(0),
+    trough_phys(0)
+{;}
+
+CSPDetectorConstruction::~CSPDetectorConstruction()
+{
+}
+
+G4VPhysicalVolume* CSPDetectorConstruction::Construct()
+{
+
+  //------------------------------------------------------ materials
+
+  G4double a;  // atomic mass
+  G4double z;  // atomic number
+  G4double density;
+  G4String name;
+  G4String symbol;
+  G4int nel;
+  
+  a = 14.01*g/mole;
+  G4Element* elN = new G4Element(name="Nitrogen", symbol="N2", z=7., a);
+
+  a = 16.00*g/mole;
+  G4Element* elO = new G4Element(name="Oxygen", symbol="O2", z=8., a);
+  
+  density = 1.290*mg/cm3;
+  G4Material* Air = new G4Material(name="Air", density, nel=2);
+  Air->AddElement(elN, 0.7);
+  Air->AddElement(elO, 0.3);
+
+  //Aluminum
+  G4Material * Al = new G4Material("Al",z=13.,a=26.98*g/mole,density=2.7*g/cm3);
+
+  const G4int nEntries = 2;
+  G4double PhotonEnergy[nEntries] =
+            { 1.0*eV, 10.0*eV };
+  G4double RefractiveIndex1[nEntries] =
+            { 10000.,   10000.};
+  G4double RefractiveIndex2[nEntries] =
+            { 1.00,  1.00 };
+
+  G4MaterialPropertiesTable* myMPT1 = new G4MaterialPropertiesTable();
+  myMPT1->AddProperty("RINDEX",       PhotonEnergy, RefractiveIndex1,nEntries); 
+
+  G4MaterialPropertiesTable* myMPT2 = new G4MaterialPropertiesTable();
+  myMPT2->AddProperty("RINDEX", PhotonEnergy, RefractiveIndex2, nEntries);
+
+  Air->SetMaterialPropertiesTable(myMPT2);
+  Al->SetMaterialPropertiesTable(myMPT1);
+
+  //------------------------------------------------------ volumes
+
+  //------------------------------ experimental hall (world volume)
+  //------------------------------ beam line along x axis
+
+  G4double expHall_x = 20.0*m;
+  G4double expHall_y = 20.0*m;
+  G4double expHall_z = 20.0*m;
+  G4Box* experimentalHall_box
+    = new G4Box("expHall_box",expHall_x,expHall_y,expHall_z);
+  experimentalHall_log = new G4LogicalVolume(experimentalHall_box,
+                                             Air,"expHall_log",0,0,0);
+  experimentalHall_phys = new G4PVPlacement(0,G4ThreeVector(),
+                                      experimentalHall_log,"expHall",0,false,0);
+
+
+  //------------------------------ Second Trough (arcs of parabola) 
+  //      dz              z half lenght
+  //      r1              radius at -dz
+  //      r2              radius at  dz
+  // I want to test different paraboles with the same aperture. 
+  // The receiver is in the origin
+  //          + r2  |       
+  //    |           |          z=r^2/(4*f) -f (eq 1, parab w. focus at origin)
+  //    |     z1    | (r2,z1): z1=-r2^2/(4*f)+f (f<0)
+  //    \     o     /          //in case r1=0, z2=f. substitute in eq 1: 
+  //     \  focus  /           z2 = f = 0.5*(z1-sqrt(z1^2+r2^2))
+  //      \       /            //in case r1!=0:
+  //        -----              z2 = r1^2/(4*f)-f 
+ 
+         
+         
+  G4double trough_r1 = 1.0*m;
+  G4double trough_r2 = 5.0*m; //r2 always 5.0, so we have the same acceptance
+  G4double rim_angle = 60*deg;
+  G4double trough_z1 = -1.*trough_r2/tan(rim_angle); // tan(rim_angle)= -r2/z1
+  //z2 = 0.5*(z1-sqrt(z1^2+r2^2))
+  G4double trough_focus = -0.5*(trough_z1-sqrt(trough_z1*trough_z1+trough_r2*trough_r2))  ;
+  G4double trough_z2 = 1.*(trough_r1*trough_r1/(4*trough_focus)-trough_focus); 
+  G4double trough_dz = (trough_z1-trough_z2)*0.5;
+  G4cout << "!!!!!trough_focus  = " << trough_focus << G4endl;
+  G4cout << "!!!!!trough_z1  = " << trough_z1 << G4endl;
+  G4cout << "!!!!!trough_z2  = " << trough_z2 << G4endl;
+   
+  
+  
+  G4Paraboloid * trough_tube = new G4Paraboloid( "trough_tube", 
+					       trough_dz,
+					       trough_r1,
+					       trough_r2 );
+  G4Box * trough_box = new G4Box ( "trough_box", 
+					       trough_r2,
+					       1.0*mm,
+					       trough_dz );
+
+  G4SubtractionSolid * trough_surface = new G4SubtractionSolid ("trough_surface",trough_box,trough_tube );
+
+  trough_log = new G4LogicalVolume(trough_surface,Al,"trough_log",0,0,0);
+
+  G4double troughPos_x = 0.*m;
+  G4double troughPos_y = 0.*m;
+  G4double troughPos_z = trough_dz+trough_z2; //origin was in the middle of the parab.
+
+  G4RotationMatrix * trough_rot = new G4RotationMatrix(0,0,0);
+
+  trough_phys = new G4PVPlacement(trough_rot,
+				  G4ThreeVector(troughPos_x,troughPos_y,troughPos_z),
+				  trough_log,"trough",experimentalHall_log,false,0);
+
+  //------------------------------ a receiver tube
+
+  G4double innerRadiusOfTheTube = 0.*cm;
+  G4double outerRadiusOfTheTube = 2.5*cm;
+
+  G4Tubs* receiver_tube = new G4Tubs("receiver_tube",innerRadiusOfTheTube,
+					 outerRadiusOfTheTube,
+                                         1*mm,
+                                         0.*deg,
+                                         360.*deg);
+
+
+  receiver_log = new G4LogicalVolume(receiver_tube,Air,"receiver_log",0,0,0);
+  G4double receiverPos_x = 0.*m;
+  G4double receiverPos_y = 0.*m;
+  G4double receiverPos_z = 0.*m;
+  
+    G4RotationMatrix * receiver_rot = new G4RotationMatrix(0,-M_PI/2,0);
+
+  receiver_phys = new G4PVPlacement(receiver_rot,
+             G4ThreeVector(receiverPos_x,receiverPos_y,receiverPos_z),
+             receiver_log,"receiver",experimentalHall_log,false,0);
+
+ //------------------------------ the glass cyl
+
+  G4double innerRadiusOfTheEnvelope = 10.*cm;
+  G4double outerRadiusOfTheEnvelope = 10.3*cm;
+ 
+  G4Tubs* receiver_envelope = new G4Tubs("receiver_envelope",innerRadiusOfTheEnvelope,
+					 outerRadiusOfTheEnvelope,
+                                         1*mm,
+                                         0,
+                                         360.*deg);
+
+
+  envelope_log = new G4LogicalVolume(receiver_envelope,Air,"envelope_log",0,0,0);
+
+  envelope_phys = new G4PVPlacement(receiver_rot,
+             G4ThreeVector(receiverPos_x,receiverPos_y,receiverPos_z),
+             envelope_log,"envelope",experimentalHall_log,false,0);
+
+  //------------------------------------------------ 
+  // Sensitive detectors
+  //------------------------------------------------ 
+
+  G4SDManager* SDman = G4SDManager::GetSDMpointer();
+
+  ReceiverSD* theSD = new ReceiverSD( "ReceiverSD" );
+  SDman->AddNewDetector( theSD );
+  receiver_log->SetSensitiveDetector( theSD );
+
+
+//--------- Visualization attributes -------------------------------
+
+  G4VisAttributes* ReceiverVisAtt= new G4VisAttributes(G4Colour(1.0,0.0,0.0));
+  receiver_log  ->SetVisAttributes(ReceiverVisAtt);  
+  G4VisAttributes* TruoghVisAtt= new G4VisAttributes(G4Colour(1.0,1.0,0.0));
+  trough_log->SetVisAttributes(TruoghVisAtt);  
+  
+  return experimentalHall_phys;
+}
+

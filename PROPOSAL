@@ -1,0 +1,35 @@
+Abstract
+
+We want to propose a new concept of Concentrating Solar Power (CSP)
+parabolic trough machine. We have identified the following problems in
+current designs: sun tracking is made by independent detection of the
+sun trajectory; macroscopic errors in single mirror modules are only
+detected a posteriori through 3d reconstruction of the mirrors shape;
+the focal line of the parabolic troughs, where the receiver lies,
+moves during the day. Our design improves AFFRONTA all three points. 
+
+The reduction of these uncertainties allows a better tracking of the
+sun and a higher concentration factor. We have simulated both
+traditional and our design. According to software simulations, the
+proposed design allows a concentration factor of XX without any change
+in the mirrors manufacturing. That would lead to a XX% gain in
+electricity production.
+
+Introduction 
+
+What is CSP. differences btw 3d and 2d.
+
+Chapter 1
+
+the sun has a shape, maximum theoretical CP. 
+actual CP and its origin: tracking, micro errors, macro errors.
+
+Chapter 2
+
+how they try today to tackle these issues? 
+-good tracking
+-good mirror positioning (ACCENNO AL VENTO)
+-good mirrors --not too expansive though!
+
+only the first two points can be improved. the third point is the same
+for any design.
